@@ -8,6 +8,8 @@
 
 import UIKit
 import CoreLocation
+import Alamofire
+import SwiftyJSON
 
 class WeatherViewController: UIViewController, CLLocationManagerDelegate {
     
@@ -18,7 +20,7 @@ class WeatherViewController: UIViewController, CLLocationManagerDelegate {
 
     //Declare instance variables here
     let locationManager = CLLocationManager()
-    
+    let weatherDataModel = WeatherDataModel()
     
     //Pre-linked IBOutlets
     @IBOutlet weak var weatherIcon: UIImageView!
@@ -34,7 +36,7 @@ class WeatherViewController: UIViewController, CLLocationManagerDelegate {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         locationManager.requestWhenInUseAuthorization()
-        
+        locationManager.startUpdatingLocation()
     }
     
     
@@ -43,9 +45,22 @@ class WeatherViewController: UIViewController, CLLocationManagerDelegate {
     /***************************************************************/
     
     //Write the getWeatherData method here:
-    
 
-    
+    func getWeatherData(url: String, parameters: [String:String]){
+        Alamofire.request(url, method: .get, parameters: parameters).responseJSON {
+            response in
+            if response.result.isSuccess {
+                print("Success, got weather data.")
+                
+                let weatherJSON : JSON = JSON(response.result.value!)
+                self.updateWeatherData(json: weatherJSON)
+                
+            } else {
+                print("Error \(String(describing: response.result.error))")
+                self.cityLabel.text = "Connection Unavailable"
+            }
+        }
+    }
     
     
     
@@ -53,16 +68,30 @@ class WeatherViewController: UIViewController, CLLocationManagerDelegate {
     //MARK: - JSON Parsing
     /***************************************************************/
    
-    
     //Write the updateWeatherData method here:
-    
+    func updateWeatherData(json: JSON){
+        
+        if let tempResult = json["main"]["temp"].double {
+        
+        weatherDataModel.temperature = Int(9/5 * (tempResult - 273.15) + 32)
+        
+        weatherDataModel.city = json["name"].stringValue
+        
+        weatherDataModel.condition = json["weather"][0]["id"].intValue
+        
+        weatherDataModel.weatherIconName = weatherDataModel.updateWeatherIcon(condition: weatherDataModel.condition)
+       
+        } else {
+            cityLabel.text = "Weather Unavailable"
+        }
+        
+    }
 
     
     
     
     //MARK: - UI Updates
     /***************************************************************/
-    
     
     //Write the updateUIWithWeatherData method here:
     
@@ -74,13 +103,29 @@ class WeatherViewController: UIViewController, CLLocationManagerDelegate {
     //MARK: - Location Manager Delegate Methods
     /***************************************************************/
     
+    //If location was fetched successfully...
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        let location = locations[locations.count-1]
+        if location.horizontalAccuracy > 0 {
+            locationManager.stopUpdatingLocation()
+            
+            print("longitude = \(location.coordinate.longitude) | latitude = \(location.coordinate.latitude)")
+            
+            let latitude = String(location.coordinate.latitude)
+            let longitude = String(location.coordinate.longitude)
+            
+            let params : [String : String] = ["lat" : latitude, "lon" : longitude, "appid" : APP_ID]
+            
+            getWeatherData(url: WEATHER_URL, parameters: params)
+        }
+    }
     
-    //Write the didUpdateLocations method here:
     
-    
-    
-    //Write the didFailWithError method here:
-    
+    //If something went wrong...
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print(error)
+        cityLabel.text = "Location Unavailable"
+    }
     
     
 
