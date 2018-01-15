@@ -18,7 +18,7 @@ class WeatherViewController: UIViewController, CLLocationManagerDelegate {
 
     //Declare instance variables here
     let locationManager = CLLocationManager()
-    //this is just test stuff
+    
     
     //Pre-linked IBOutlets
     @IBOutlet weak var weatherIcon: UIImageView!
